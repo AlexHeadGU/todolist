@@ -1,11 +1,10 @@
 package models
 
-type User struct {
-	Name  string `json:"name"`
-	Age   int    `json:"age"`
-	Email string `json:"email,omitempty"`
-}
+import "time"
 
-func (u User) Greet() string {
-	return "Hello, " + u.Name
+type User struct {
+	ID           int       `json:"id"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"-"` // не возвращаем в JSON
+	CreatedAt    time.Time `json:"created_at"`
 }
