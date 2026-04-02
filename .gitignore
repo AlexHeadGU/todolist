@@ -9,10 +9,16 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
+build/
 dist
 dist-ssr
 coverage
 *.local
+
+# Env файлы
+.env
+.env.local
+.env.*.local
 
 # Editor directories and files
 .vscode/*
@@ -37,3 +43,4 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
