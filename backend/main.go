@@ -94,16 +94,15 @@ func main() {
 	r.Post("/api/register", authHandler.Register)
 	r.Post("/api/login", authHandler.Login)
 
-	// r.Get("/api/tasks{id}", authHandler.Task)
-	// r.Put("/api/tasks{id}", authHandler.ChangeTask)
-	// r.Patch("/api/tasks{id}", authHandler.EditTask)
-	// r.Delete("/api/tasks{id}", authHandler.DeleteTask)
-
 	// Защищенные маршруты
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService))
 		r.Post("/api/tasks", taskHandler.Create)
 		r.Get("/api/tasks", taskHandler.GetAll)
+		r.Get("/api/tasks/{id}", taskHandler.GetByID)
+		// r.Put("/api/tasks/{id}", authHandler.ChangeTask)
+		// r.Patch("/api/tasks/{id}", authHandler.EditTask)
+		// r.Delete("/api/tasks/{id}", authHandler.DeleteTask)
 	})
 
 	// Тестовый маршрут

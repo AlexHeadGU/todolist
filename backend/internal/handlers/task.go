@@ -5,9 +5,11 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/AlexHeadGU/todolist/internal/models"
 	"github.com/AlexHeadGU/todolist/internal/service"
+	"github.com/go-chi/chi/v5"
 )
 
 type TaskHandler struct {
@@ -82,3 +84,25 @@ func (h *TaskHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(tasks)
 }
+
+func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
+	userID := r.Context().Value("user_id").(int)
+	// Получаем ID из URL
+	taskIDStr := chi.URLParam(r, "id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.taskService.GetTaskByID(taskID, userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {}
+func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {}

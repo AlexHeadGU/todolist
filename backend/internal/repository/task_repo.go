@@ -34,7 +34,7 @@ func (r *TaskRepository) Create(title, description string, userID int) (*models.
 		&task.UpdatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create task: %w", err)
+		return nil, fmt.Errorf("failed to create• task: %w", err)
 	}
 
 	return task, nil
@@ -75,3 +75,39 @@ func (r *TaskRepository) GetByUserID(userID int) ([]models.Task, error) {
 
 	return tasks, nil
 }
+
+// GetByID возвращает задачу по ее ID
+func (r *TaskRepository) GetByID(taskID int) (*models.Task, error) {
+	query := `
+        SELECT id, user_id, title, description, status, created_at, updated_at
+        FROM tasks
+        WHERE id = $1
+    `
+
+	task := &models.Task{}
+	err := r.db.QueryRow(query, taskID).Scan(
+		&task.ID,
+		&task.UserID,
+		&task.Title,
+		&task.Description,
+		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // задача не найдена (не ошибка)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to get task: %w", err)
+	}
+
+	return task, nil
+
+}
+
+// Update обновляет задачу по ее ID
+// func (r *TaskRepository) Update(userID int) ([]models.Task, error) {}
+
+// Delete удадяет задачу по ее ID
+// func (r *TaskRepository) Delete(userID int) ([]models.Task, error) {}

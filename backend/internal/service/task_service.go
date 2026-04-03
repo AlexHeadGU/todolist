@@ -38,3 +38,25 @@ func (s *TaskService) GetUserTasks(userID int) ([]models.Task, error) {
 	}
 	return tasks, nil
 }
+
+// GetTaskByID возвращает задачу по ID
+func (s *TaskService) GetTaskByID(taskID, userID int) (*models.Task, error) {
+	task, err := s.taskRepo.GetByID(taskID)
+	if err != nil {
+		return nil, err
+	}
+	if task == nil {
+		return nil, fmt.Errorf("task not found")
+	}
+	// Проверяем, что задача принадлежит пользователю
+	if task.UserID != userID {
+		return nil, fmt.Errorf("access denied")
+	}
+	return task, nil
+}
+
+// UpdateTask редактирование задачи по ID
+// func (s *TaskService) UpdateTask(userID int) ([]models.Task, error) {}
+
+// DeleteTask удаление задачи по ID
+// func (s *TaskService) DeleteTask(userID int) ([]models.Task, error) {}
