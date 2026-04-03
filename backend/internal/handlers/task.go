@@ -60,3 +60,25 @@ func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated) // 201 Created
 	json.NewEncoder(w).Encode(task)
 }
+
+// GetAll возвращает все задачи текущего пользователя
+func (h *TaskHandler) GetAll(w http.ResponseWriter, r *http.Request) {
+	// Извлекаем user_id из контекста
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Получаем задачи
+	tasks, err := h.taskService.GetUserTasks(userID)
+	if err != nil {
+		http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+		return
+	}
+
+	// Отправляем ответ
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(tasks)
+}

@@ -29,3 +29,12 @@ func (s *TaskService) Create(title, description string, userID int) (*models.Tas
 
 	return task, nil
 }
+
+// GetUserTasks возвращает все задачи пользователя
+func (s *TaskService) GetUserTasks(userID int) ([]models.Task, error) {
+	tasks, err := s.taskRepo.GetByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user tasks: %w", err)
+	}
+	return tasks, nil
+}

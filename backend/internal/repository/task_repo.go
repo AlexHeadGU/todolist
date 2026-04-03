@@ -39,3 +39,39 @@ func (r *TaskRepository) Create(title, description string, userID int) (*models.
 
 	return task, nil
 }
+
+// GetByUserID возвращает все задачи пользователя
+func (r *TaskRepository) GetByUserID(userID int) ([]models.Task, error) {
+	query := `
+        SELECT id, user_id, title, description, status, created_at, updated_at
+        FROM tasks
+        WHERE user_id = $1
+        ORDER BY created_at DESC
+    `
+
+	rows, err := r.db.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get tasks: %w", err)
+	}
+	defer rows.Close()
+
+	var tasks []models.Task
+	for rows.Next() {
+		var task models.Task
+		err := rows.Scan(
+			&task.ID,
+			&task.UserID,
+			&task.Title,
+			&task.Description,
+			&task.Status,
+			&task.CreatedAt,
+			&task.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan task: %w", err)
+		}
+		tasks = append(tasks, task)
+	}
+
+	return tasks, nil
+}

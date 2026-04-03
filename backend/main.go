@@ -58,11 +58,11 @@ func main() {
 		log.Fatal("Failed to create source from embed:", err)
 	}
 
-	// 5. Создаём мигратор (правильный способ для iofs)
+	// 5. Создаём мигратор
 	m, err := migrate.NewWithInstance(
-		"iofs",     // имя источника (произвольное, но должно совпадать в обоих местах)
+		"iofs",     // имя источника
 		source,     // экземпляр источника
-		"postgres", // имя базы данных (произвольное)
+		"postgres", // имя базы данных
 		driver,     // экземпляр драйвера БД
 	)
 	if err != nil {
@@ -77,7 +77,7 @@ func main() {
 
 	// Инициализация репозиториев, сервисов, хендлеров
 	userRepo := repository.NewUserRepository(db) // репозиторий пользователей
-	taskRepo := repository.NewTaskRepository(db) // репозиторий задач (исправлено!)
+	taskRepo := repository.NewTaskRepository(db) // репозиторий задач
 
 	// Сервисы
 	authService := service.NewAuthService(userRepo) // сервис аутентификации
@@ -93,8 +93,7 @@ func main() {
 	// Публичные маршруты
 	r.Post("/api/register", authHandler.Register)
 	r.Post("/api/login", authHandler.Login)
-	// r.Get("/api/tasks", authHandler.Tasks)
-	r.Post("/api/tasks", taskHandler.Create)
+
 	// r.Get("/api/tasks{id}", authHandler.Task)
 	// r.Put("/api/tasks{id}", authHandler.ChangeTask)
 	// r.Patch("/api/tasks{id}", authHandler.EditTask)
@@ -104,6 +103,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(authService))
 		r.Post("/api/tasks", taskHandler.Create)
+		r.Get("/api/tasks", taskHandler.GetAll)
 	})
 
 	// Тестовый маршрут
