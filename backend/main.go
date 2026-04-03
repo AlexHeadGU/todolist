@@ -7,6 +7,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
+
 	"github.com/AlexHeadGU/todolist/internal/config"
 	"github.com/AlexHeadGU/todolist/internal/handlers"
 	"github.com/AlexHeadGU/todolist/internal/middleware"
@@ -74,9 +76,16 @@ func main() {
 	log.Println("Migrations applied successfully")
 
 	// Инициализация репозиториев, сервисов, хендлеров
-	userRepo := repository.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo)
-	authHandler := handlers.NewAuthHandler(authService)
+	userRepo := repository.NewUserRepository(db) // репозиторий пользователей
+	taskRepo := repository.NewTaskRepository(db) // репозиторий задач (исправлено!)
+
+	// Сервисы
+	authService := service.NewAuthService(userRepo) // сервис аутентификации
+	taskService := service.NewTaskService(taskRepo) // сервис задач
+
+	// Хендлеры
+	authHandler := handlers.NewAuthHandler(authService) // хендлер аутентификации
+	taskHandler := handlers.NewTaskHandler(taskService) // хендлер задач
 
 	// 7. Настройка роутера
 	r := middleware.Setup()
@@ -84,6 +93,18 @@ func main() {
 	// Публичные маршруты
 	r.Post("/api/register", authHandler.Register)
 	r.Post("/api/login", authHandler.Login)
+	// r.Get("/api/tasks", authHandler.Tasks)
+	r.Post("/api/tasks", taskHandler.Create)
+	// r.Get("/api/tasks{id}", authHandler.Task)
+	// r.Put("/api/tasks{id}", authHandler.ChangeTask)
+	// r.Patch("/api/tasks{id}", authHandler.EditTask)
+	// r.Delete("/api/tasks{id}", authHandler.DeleteTask)
+
+	// Защищенные маршруты
+	r.Group(func(r chi.Router) {
+		r.Use(middleware.Auth(authService))
+		r.Post("/api/tasks", taskHandler.Create)
+	})
 
 	// Тестовый маршрут
 	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
