@@ -1,11 +1,24 @@
-<script setup lang="ts"></script>
-
 <template>
-  <h1>You did it!</h1>
-  <p>
-    Visit <a href="https://vuejs.org/" target="_blank" rel="noopener">vuejs.org</a> to read the
-    documentation
-  </p>
+  <div id="app">
+    <nav>
+      <router-link to="/tasks">Tasks</router-link>
+      <button @click="logout" v-if="isAuthenticated">Logout</button>
+    </nav>
+    <router-view />
+  </div>
 </template>
 
-<style scoped></style>
+<script setup lang="ts">
+import { useRouter } from 'vue-router'
+import { useAuthStore } from './stores/auth'
+import { computed } from 'vue'
+
+const router = useRouter()
+const authStore = useAuthStore()
+const isAuthenticated = computed(() => authStore.isAuthenticated)
+
+const logout = () => {
+  authStore.logout()
+  router.push('/login')
+}
+</script>
