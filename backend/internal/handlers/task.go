@@ -1,5 +1,3 @@
-// обработчики регистрации и входа
-
 package handlers
 
 import (
@@ -7,9 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-chi/chi/v5"
+
+	"github.com/AlexHeadGU/todolist/internal/logger"
 	"github.com/AlexHeadGU/todolist/internal/models"
 	"github.com/AlexHeadGU/todolist/internal/service"
-	"github.com/go-chi/chi/v5"
+	"github.com/AlexHeadGU/todolist/internal/utils"
 )
 
 type TaskHandler struct {
@@ -22,87 +23,85 @@ func NewTaskHandler(taskService *service.TaskService) *TaskHandler {
 	}
 }
 
-// Create обрабатывает создание новой задачи
 func (h *TaskHandler) Create(w http.ResponseWriter, r *http.Request) {
-	// 1. Извлекаем user_id из контекста (установлен middleware аутентификации)
 	userID, ok := r.Context().Value("user_id").(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
 
-	// 2. Парсим тело запроса
 	var req models.CreateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		logger.Warn("Invalid task creation request", "error", err)
+		utils.SendValidationError(w, "Invalid request body")
 		return
 	}
 
-	// 3. Базовая валидация
 	if req.Title == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
+		logger.Warn("Task creation failed - missing title", "user_id", userID)
+		utils.SendValidationError(w, "Title is required")
 		return
 	}
 
-	// 4. Вызываем сервис для создания задачи
 	task, err := h.taskService.Create(req.Title, req.Description, userID)
 	if err != nil {
-		// Обработка разных типов ошибок
-		switch err.Error() {
-		case "title cannot be empty":
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		default:
-			http.Error(w, "Failed to create task", http.StatusInternalServerError)
-		}
+		logger.Error("Failed to create task", "error", err, "user_id", userID)
+		utils.SendInternalError(w, err, "Failed to create task")
 		return
 	}
 
-	// 5. Отправляем успешный ответ
+	logger.Info("Task created", "task_id", task.ID, "user_id", userID)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated) // 201 Created
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(task)
 }
 
-// GetAll возвращает все задачи текущего пользователя
 func (h *TaskHandler) GetAll(w http.ResponseWriter, r *http.Request) {
-	// Извлекаем user_id из контекста
 	userID, ok := r.Context().Value("user_id").(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
 
-	// Получаем задачи
 	tasks, err := h.taskService.GetUserTasks(userID)
 	if err != nil {
-		http.Error(w, "Failed to get tasks", http.StatusInternalServerError)
+		logger.Error("Failed to get tasks", "error", err, "user_id", userID)
+		utils.SendInternalError(w, err, "Failed to get tasks")
 		return
 	}
 
-	// Отправляем ответ
+	logger.Debug("Tasks retrieved", "count", len(tasks), "user_id", userID)
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(tasks)
 }
 
 func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("user_id").(int)
-
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
-	// Получаем ID из URL
+
 	taskIDStr := chi.URLParam(r, "id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		logger.Warn("Invalid task ID", "id", taskIDStr, "user_id", userID)
+		utils.SendValidationError(w, "Invalid task ID")
 		return
 	}
 
 	task, err := h.taskService.GetTaskByID(taskID, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		if err.Error() == "task not found" {
+			logger.Warn("Task not found", "task_id", taskID, "user_id", userID)
+			utils.SendNotFoundError(w, "Task not found")
+		} else if err.Error() == "access denied" {
+			logger.Warn("Access denied to task", "task_id", taskID, "user_id", userID)
+			utils.SendNotFoundError(w, "Task not found")
+		} else {
+			logger.Error("Failed to get task", "error", err, "task_id", taskID)
+			utils.SendInternalError(w, err, "Failed to get task")
+		}
 		return
 	}
 
@@ -110,113 +109,120 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(task)
 }
 
-// Update обрабатывает PUT /api/tasks/{id} (полное обновление)
 func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("user_id").(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
 
 	taskIDStr := chi.URLParam(r, "id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		logger.Warn("Invalid task ID for update", "id", taskIDStr)
+		utils.SendValidationError(w, "Invalid task ID")
 		return
 	}
 
 	var req models.UpdateTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		logger.Warn("Invalid update request", "error", err)
+		utils.SendValidationError(w, "Invalid request body")
 		return
 	}
 
-	// Валидация
 	if req.Title == "" {
-		http.Error(w, "Title is required", http.StatusBadRequest)
+		utils.SendValidationError(w, "Title is required")
 		return
 	}
 	if req.Status != "pending" && req.Status != "done" {
-		http.Error(w, "Status must be 'pending' or 'done'", http.StatusBadRequest)
+		utils.SendValidationError(w, "Status must be 'pending' or 'done'")
 		return
 	}
 
 	task, err := h.taskService.UpdateTask(taskID, userID, req.Title, req.Description, req.Status)
 	if err != nil {
 		if err.Error() == "task not found or access denied" {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			logger.Warn("Task not found for update", "task_id", taskID, "user_id", userID)
+			utils.SendNotFoundError(w, "Task not found")
 		} else {
-			http.Error(w, "Failed to update task", http.StatusInternalServerError)
+			logger.Error("Failed to update task", "error", err, "task_id", taskID)
+			utils.SendInternalError(w, err, "Failed to update task")
 		}
 		return
 	}
 
+	logger.Info("Task updated", "task_id", taskID, "user_id", userID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
 }
 
-// Patch обрабатывает PATCH /api/tasks/{id} (частичное обновление)
 func (h *TaskHandler) Patch(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value("user_id").(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
 
 	taskIDStr := chi.URLParam(r, "id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		logger.Warn("Invalid task ID for patch", "id", taskIDStr)
+		utils.SendValidationError(w, "Invalid task ID")
 		return
 	}
 
 	var req models.PatchTaskRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		logger.Warn("Invalid patch request", "error", err)
+		utils.SendValidationError(w, "Invalid request body")
 		return
 	}
 
 	task, err := h.taskService.PatchTask(taskID, userID, req.Title, req.Description, req.Status)
 	if err != nil {
 		if err.Error() == "task not found or access denied" {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			logger.Warn("Task not found for patch", "task_id", taskID, "user_id", userID)
+			utils.SendNotFoundError(w, "Task not found")
 		} else {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			logger.Error("Failed to patch task", "error", err, "task_id", taskID)
+			utils.SendInternalError(w, err, err.Error())
 		}
 		return
 	}
 
+	logger.Info("Task patched", "task_id", taskID, "user_id", userID)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
 }
 
 func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	// 1. Получаем user_id из контекста
 	userID, ok := r.Context().Value("user_id").(int)
 	if !ok {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		utils.SendUnauthorizedError(w, "Unauthorized")
 		return
 	}
 
-	// 2. Получаем task_id из URL
 	taskIDStr := chi.URLParam(r, "id")
 	taskID, err := strconv.Atoi(taskIDStr)
 	if err != nil {
-		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		logger.Warn("Invalid task ID for delete", "id", taskIDStr)
+		utils.SendValidationError(w, "Invalid task ID")
 		return
 	}
 
-	// 3. Вызываем сервис для удаления
 	err = h.taskService.DeleteTask(taskID, userID)
 	if err != nil {
 		if err.Error() == "task not found or access denied" {
-			http.Error(w, "Task not found", http.StatusNotFound)
+			logger.Warn("Task not found for delete", "task_id", taskID, "user_id", userID)
+			utils.SendNotFoundError(w, "Task not found")
 		} else {
-			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+			logger.Error("Failed to delete task", "error", err, "task_id", taskID)
+			utils.SendInternalError(w, err, "Failed to delete task")
 		}
 		return
 	}
 
-	// 4. Успешное удаление (204 No Content)
+	logger.Info("Task deleted", "task_id", taskID, "user_id", userID)
 	w.WriteHeader(http.StatusNoContent)
 }

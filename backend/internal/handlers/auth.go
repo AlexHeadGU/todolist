@@ -1,13 +1,13 @@
-// обработчики регистрации и входа
-
 package handlers
 
 import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/AlexHeadGU/todolist/internal/logger"
 	"github.com/AlexHeadGU/todolist/internal/models"
 	"github.com/AlexHeadGU/todolist/internal/service"
+	"github.com/AlexHeadGU/todolist/internal/utils"
 )
 
 type AuthHandler struct {
@@ -20,63 +20,67 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 	}
 }
 
-// Register обрабатывает регистрацию пользователя
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
+	logger.Info("Registration attempt", "ip", r.RemoteAddr)
+
 	var req models.RegisterRequest
 
-	// Декодируем JSON
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		logger.Warn("Invalid registration request", "error", err)
+		utils.SendValidationError(w, "Invalid request body")
 		return
 	}
 
-	// Валидация (простая)
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		logger.Warn("Missing registration fields", "email", req.Email != "")
+		utils.SendValidationError(w, "Email and password are required")
 		return
 	}
 
-	// Регистрируем пользователя
 	user, err := h.authService.Register(req.Email, req.Password)
 	if err != nil {
 		if err.Error() == "user already exists" {
-			http.Error(w, "User already exists", http.StatusConflict)
+			logger.Warn("Registration failed - user exists", "email", req.Email)
+			utils.SendError(w, http.StatusConflict, "User already exists")
 		} else {
-			http.Error(w, "Failed to create user", http.StatusInternalServerError)
+			logger.Error("Registration failed", "error", err, "email", req.Email)
+			utils.SendInternalError(w, err, "Failed to create user")
 		}
 		return
 	}
 
-	// Отправляем ответ
+	logger.Info("User registered successfully", "user_id", user.ID, "email", user.Email)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(user)
 }
 
-// Login обрабатывает вход пользователя
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
+	logger.Info("Login attempt", "ip", r.RemoteAddr)
+
 	var req models.LoginRequest
 
-	// Декодируем JSON
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		logger.Warn("Invalid login request", "error", err)
+		utils.SendValidationError(w, "Invalid request body")
 		return
 	}
 
-	// Проверяем наличие полей
 	if req.Email == "" || req.Password == "" {
-		http.Error(w, "Email and password are required", http.StatusBadRequest)
+		logger.Warn("Missing login fields", "email", req.Email != "")
+		utils.SendValidationError(w, "Email and password are required")
 		return
 	}
 
-	// Выполняем вход
 	token, user, err := h.authService.Login(req.Email, req.Password)
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		logger.Warn("Login failed - invalid credentials", "email", req.Email)
+		utils.SendUnauthorizedError(w, "Invalid credentials")
 		return
 	}
 
-	// Отправляем ответ
+	logger.Info("User logged in successfully", "user_id", user.ID, "email", user.Email)
+
 	response := models.LoginResponse{
 		Token: token,
 		User:  *user,
