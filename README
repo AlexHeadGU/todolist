@@ -1,0 +1,45 @@
+# TodoList API
+
+REST API для управления задачами на Go + PostgreSQL + Vue (в процессе).
+
+## Технологии
+
+- **Backend**: Go 1.21+, Chi Router, PostgreSQL
+- **Auth**: JWT, bcrypt
+- **Migrations**: golang-migrate
+- **Logging**: slog (JSON формат)
+- **Frontend**: Vue 3 + TypeScript (в разработке)
+
+## Функционал
+
+- Регистрация / Логин пользователей
+- JWT аутентификация
+- CRUD операции с задачами
+- Валидация данных
+- Логирование запросов и ошибок
+- Миграции БД
+- Фронтенд на Vue (в разработке)
+
+## Запуск проекта
+
+### Требования
+
+- Go 1.21+
+- PostgreSQL (или Docker)
+
+### Установка
+
+```bash
+# Клонирование репозитория
+git clone https://github.com/AlexHeadGU/todolist.git
+cd todolist/backend
+
+# Устанвока зависимостей
+go mod download
+
+# НАстройка переменных окружения
+cp .env.example .env
+# Отредактируйте .env (JWT_SECRET, DATABASE_URL)
+
+# Запуск сервера
+go run main.go
