@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { getTasks, createTask, updateTask, patchTask, deleteTask } from '../services/api'
+import { getTasks, createTask, patchTask, deleteTask } from '../services/api'
 import type { Task, CreateTaskRequest, UpdateTaskRequest } from '../types'
 
 export const useTasksStore = defineStore('tasks', () => {
