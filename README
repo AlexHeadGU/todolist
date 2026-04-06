@@ -1,0 +1,80 @@
+# TodoList API
+
+REST API для управления задачами на Go + PostgreSQL + Vue (в процессе).
+
+## Технологии
+
+### Backend
+- **Go 1.21+** – основной язык
+- **Chi Router** – маршрутизация
+- **PostgreSQL** – база данных
+- **JWT** – аутентификация
+- **bcrypt** – хеширование паролей
+- **golang-migrate** – миграции БД
+- **slog** – логирование в JSON формате
+
+### Frontend
+- **Vue 3** – прогрессивный JavaScript фреймворк
+- **TypeScript** – типизация
+- **Pinia** – управление состоянием
+- **Vue Router** – маршрутизация
+- **Axios** – HTTP клиент
+- **Vite** – сборщик
+
+## Функционал
+
+Регистрация пользователей
+-  Аутентификация (JWT токены)
+-  Создание, чтение, обновление, удаление задач (CRUD)
+-  Изменение статуса задачи (pending/done)
+-  Защищённые маршруты
+-  Единый формат ошибок API
+-  JSON логирование
+-  Адаптивный интерфейс (без стилизации)
+
+
+## Установка и запуск
+
+### Требования
+
+- **Go** 1.21 или выше
+- **Node.js** 18 или выше
+- **PostgreSQL** 14 или выше (или Docker)
+
+### 1. Клонирование репозитория
+
+```bash
+git clone https://github.com/AlexHeadGU/todolist.git
+cd todolist
+
+
+### Настройка backand
+cd backend
+
+# Установка зависимостей
+go mod download
+
+# Создание файла с переменными окружения
+cp .env.example .env
+
+# Отредактируйте .env (JWT_SECRET, DATABASE_URL)
+
+
+###Настройка frontend
+cd ../frontend
+
+# Установка зависимостей
+npm install
+
+# Создание файла с переменными окружения
+cp .env.example .env
+
+
+
+###Запуск backend
+cd backend
+go run cmd/api/main.go
+
+###Запуск frontend
+cd frontend
+npm run dev
