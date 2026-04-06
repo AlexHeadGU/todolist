@@ -86,7 +86,12 @@ func (h *TaskHandler) GetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
-	userID := r.Context().Value("user_id").(int)
+	userID, ok := r.Context().Value("user_id").(int)
+
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	// Получаем ID из URL
 	taskIDStr := chi.URLParam(r, "id")
 	taskID, err := strconv.Atoi(taskIDStr)
@@ -105,4 +110,33 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(task)
 }
 func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {}
-func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {}
+func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	// 1. Получаем user_id из контекста
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// 2. Получаем task_id из URL
+	taskIDStr := chi.URLParam(r, "id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	// 3. Вызываем сервис для удаления
+	err = h.taskService.DeleteTask(taskID, userID)
+	if err != nil {
+		if err.Error() == "task not found or access denied" {
+			http.Error(w, "Task not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to delete task", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// 4. Успешное удаление (204 No Content)
+	w.WriteHeader(http.StatusNoContent)
+}

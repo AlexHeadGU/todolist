@@ -102,7 +102,7 @@ func main() {
 		r.Get("/api/tasks/{id}", taskHandler.GetByID)
 		// r.Put("/api/tasks/{id}", authHandler.ChangeTask)
 		// r.Patch("/api/tasks/{id}", authHandler.EditTask)
-		// r.Delete("/api/tasks/{id}", authHandler.DeleteTask)
+		r.Delete("/api/tasks/{id}", taskHandler.Delete)
 	})
 
 	// Тестовый маршрут

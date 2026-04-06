@@ -109,5 +109,27 @@ func (r *TaskRepository) GetByID(taskID int) (*models.Task, error) {
 // Update обновляет задачу по ее ID
 // func (r *TaskRepository) Update(userID int) ([]models.Task, error) {}
 
-// Delete удадяет задачу по ее ID
-// func (r *TaskRepository) Delete(userID int) ([]models.Task, error) {}
+// Delete удаляет задачу по ID и user_id (проверка владельца)
+func (r *TaskRepository) Delete(taskID, userID int) error {
+	query := `
+        DELETE FROM tasks
+        WHERE id = $1 AND user_id = $2
+    `
+
+	result, err := r.db.Exec(query, taskID, userID)
+	if err != nil {
+		return fmt.Errorf("failed to delete task: %w", err)
+	}
+
+	// Проверяем, была ли удалена хотя бы одна запись
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("task not found or access denied")
+	}
+
+	return nil
+}

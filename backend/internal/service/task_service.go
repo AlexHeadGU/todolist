@@ -58,5 +58,7 @@ func (s *TaskService) GetTaskByID(taskID, userID int) (*models.Task, error) {
 // UpdateTask редактирование задачи по ID
 // func (s *TaskService) UpdateTask(userID int) ([]models.Task, error) {}
 
-// DeleteTask удаление задачи по ID
-// func (s *TaskService) DeleteTask(userID int) ([]models.Task, error) {}
+// DeleteTask удаляет задачу (с проверкой владельца)
+func (s *TaskService) DeleteTask(taskID, userID int) error {
+	return s.taskRepo.Delete(taskID, userID)
+}
