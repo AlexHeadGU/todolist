@@ -13,6 +13,18 @@ type Task struct {
 }
 
 type CreateTaskRequest struct {
-	Title       string `json:"title" validate:"required,min=1,max=255"`
-	Description string `json:"description,omitempty" validate:"max=1000"`
+	Title       string `json:"title" validate:"required"`
+	Description string `json:"description,omitempty"`
+}
+
+type UpdateTaskRequest struct {
+	Title       string `json:"title" validate:"required"`
+	Description string `json:"description"`
+	Status      string `json:"status" validate:"oneof=pending done"`
+}
+
+type PatchTaskRequest struct {
+	Title       *string `json:"title,omitempty" validate:"omitempty,min=1"`
+	Description *string `json:"description,omitempty"`
+	Status      *string `json:"status,omitempty" validate:"omitempty,oneof=pending done"`
 }

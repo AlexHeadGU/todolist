@@ -55,8 +55,47 @@ func (s *TaskService) GetTaskByID(taskID, userID int) (*models.Task, error) {
 	return task, nil
 }
 
-// UpdateTask редактирование задачи по ID
-// func (s *TaskService) UpdateTask(userID int) ([]models.Task, error) {}
+// UpdateTask полностью обновляет задачу (PUT)
+func (s *TaskService) UpdateTask(taskID, userID int, title, description, status string) (*models.Task, error) {
+	// Валидация
+	if title == "" {
+		return nil, fmt.Errorf("title cannot be empty")
+	}
+	if status != "pending" && status != "done" {
+		return nil, fmt.Errorf("status must be 'pending' or 'done'")
+	}
+
+	task, err := s.taskRepo.Update(taskID, userID, title, description, status)
+	if err != nil {
+		return nil, err
+	}
+	if task == nil {
+		return nil, fmt.Errorf("task not found or access denied")
+	}
+
+	return task, nil
+}
+
+// PatchTask частично обновляет задачу (PATCH)
+func (s *TaskService) PatchTask(taskID, userID int, title, description, status *string) (*models.Task, error) {
+	// Валидация
+	if title != nil && *title == "" {
+		return nil, fmt.Errorf("title cannot be empty")
+	}
+	if status != nil && *status != "pending" && *status != "done" {
+		return nil, fmt.Errorf("status must be 'pending' or 'done'")
+	}
+
+	task, err := s.taskRepo.Patch(taskID, userID, title, description, status)
+	if err != nil {
+		return nil, err
+	}
+	if task == nil {
+		return nil, fmt.Errorf("task not found or access denied")
+	}
+
+	return task, nil
+}
 
 // DeleteTask удаляет задачу (с проверкой владельца)
 func (s *TaskService) DeleteTask(taskID, userID int) error {

@@ -106,8 +106,86 @@ func (r *TaskRepository) GetByID(taskID int) (*models.Task, error) {
 
 }
 
-// Update обновляет задачу по ее ID
-// func (r *TaskRepository) Update(userID int) ([]models.Task, error) {}
+// Update обновляет все поля задачи (PUT)
+func (r *TaskRepository) Update(taskID, userID int, title, description, status string) (*models.Task, error) {
+	query := `
+        UPDATE tasks
+        SET title = $1, description = $2, status = $3, updated_at = NOW()
+        WHERE id = $4 AND user_id = $5
+        RETURNING id, user_id, title, description, status, created_at, updated_at
+    `
+
+	task := &models.Task{}
+	err := r.db.QueryRow(query, title, description, status, taskID, userID).Scan(
+		&task.ID,
+		&task.UserID,
+		&task.Title,
+		&task.Description,
+		&task.Status,
+		&task.CreatedAt,
+		&task.UpdatedAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil // задача не найдена или не принадлежит пользователю
+	}
+	if err != nil {
+		return nil, fmt.Errorf("failed to update task: %w", err)
+	}
+
+	return task, nil
+}
+
+// Patch обновляет только переданные поля (PATCH)
+func (r *TaskRepository) Patch(taskID, userID int, title, description, status *string) (*models.Task, error) {
+	// Сначала получаем текущую задачу
+	currentTask, err := r.GetByID(taskID)
+	if err != nil {
+		return nil, err
+	}
+	if currentTask == nil {
+		return nil, nil
+	}
+
+	// Проверяем владельца
+	if currentTask.UserID != userID {
+		return nil, nil
+	}
+
+	// Обновляем только те поля, которые переданы
+	if title != nil {
+		currentTask.Title = *title
+	}
+	if description != nil {
+		currentTask.Description = *description
+	}
+	if status != nil {
+		currentTask.Status = *status
+	}
+
+	// Сохраняем обновлённую задачу
+	query := `
+        UPDATE tasks
+        SET title = $1, description = $2, status = $3, updated_at = NOW()
+        WHERE id = $4 AND user_id = $5
+        RETURNING id, user_id, title, description, status, created_at, updated_at
+    `
+
+	updatedTask := &models.Task{}
+	err = r.db.QueryRow(query, currentTask.Title, currentTask.Description, currentTask.Status, taskID, userID).Scan(
+		&updatedTask.ID,
+		&updatedTask.UserID,
+		&updatedTask.Title,
+		&updatedTask.Description,
+		&updatedTask.Status,
+		&updatedTask.CreatedAt,
+		&updatedTask.UpdatedAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch task: %w", err)
+	}
+
+	return updatedTask, nil
+}
 
 // Delete удаляет задачу по ID и user_id (проверка владельца)
 func (r *TaskRepository) Delete(taskID, userID int) error {

@@ -109,7 +109,87 @@ func (h *TaskHandler) GetByID(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(task)
 }
-func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {}
+
+// Update обрабатывает PUT /api/tasks/{id} (полное обновление)
+func (h *TaskHandler) Update(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	taskIDStr := chi.URLParam(r, "id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	var req models.UpdateTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Валидация
+	if req.Title == "" {
+		http.Error(w, "Title is required", http.StatusBadRequest)
+		return
+	}
+	if req.Status != "pending" && req.Status != "done" {
+		http.Error(w, "Status must be 'pending' or 'done'", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.taskService.UpdateTask(taskID, userID, req.Title, req.Description, req.Status)
+	if err != nil {
+		if err.Error() == "task not found or access denied" {
+			http.Error(w, "Task not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Failed to update task", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
+// Patch обрабатывает PATCH /api/tasks/{id} (частичное обновление)
+func (h *TaskHandler) Patch(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value("user_id").(int)
+	if !ok {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	taskIDStr := chi.URLParam(r, "id")
+	taskID, err := strconv.Atoi(taskIDStr)
+	if err != nil {
+		http.Error(w, "Invalid task ID", http.StatusBadRequest)
+		return
+	}
+
+	var req models.PatchTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	task, err := h.taskService.PatchTask(taskID, userID, req.Title, req.Description, req.Status)
+	if err != nil {
+		if err.Error() == "task not found or access denied" {
+			http.Error(w, "Task not found", http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(task)
+}
+
 func (h *TaskHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	// 1. Получаем user_id из контекста
 	userID, ok := r.Context().Value("user_id").(int)
